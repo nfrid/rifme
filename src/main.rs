@@ -18,9 +18,9 @@ enum PartOfSpeech {
 
 #[derive(Default)]
 struct RifmeOptions {
-    syllables: Option<i8>,
+    syllables: Option<u8>,
     part: Option<PartOfSpeech>,
-    emphasis: Option<i8>,
+    emphasis: Option<u8>,
 }
 
 fn build_cookie(options: RifmeOptions) -> String {
@@ -76,6 +76,9 @@ async fn get_rifme(
 
 use clap::Parser;
 
+const SYLLABLES_MAX: u8 = 8;
+const SYLLABLES_RANGE: std::ops::Range<i64> = 0..(SYLLABLES_MAX as i64 + 1);
+
 #[derive(Parser, Debug)]
 #[clap(
     author = "Nick Friday",
@@ -87,9 +90,12 @@ struct Args {
     /// Word to get rhymes for
     word: String,
 
-    /// Number of syllables - any by default, 0 for FULL (may be slow)
-    #[arg(short, long, default_value = None)]
-    syllables: Option<i8>,
+    /// Number of syllables up to 8 - any by default, 0 for FULL (may be slow)
+    #[arg(
+        short, long, default_value = None,
+        value_parser=clap::value_parser!(u8).range(SYLLABLES_RANGE),
+    )]
+    syllables: Option<u8>,
 
     /// Part of speech - all by default
     #[arg(short, long, default_value = None)]
@@ -97,13 +103,14 @@ struct Args {
 
     /// Emphasis number - 0 for last, 1 for 2nd last, etc.
     #[arg(short, long, default_value = None)]
-    emphasis: Option<i8>,
+    emphasis: Option<u8>,
 }
 
 #[async_std::main]
 async fn main() {
     let args = Args::parse();
-    let rhymes: Vec<String> = if args.syllables.unwrap_or(-1) > 0 {
+    let rhymes: Vec<String> = if args.syllables.unwrap_or(SYLLABLES_MAX + 1) > 0
+    {
         get_rifme(
             args.word,
             RifmeOptions {
